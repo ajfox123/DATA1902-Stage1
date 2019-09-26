@@ -44,7 +44,6 @@ pop['Year'] = pd.to_numeric(pop['Year'])
 
 
 
-
 olympics = olympics.merge(noc, left_on='NOC', right_on='NOC', how='left')
 olympics['region'] = np.where(olympics['NOC']=='SGP', 'Singapore', olympics['region'])
 olympics['region'] = np.where(olympics['NOC']=='ROT', 'Refugee Olympic Athletes', olympics['region'])
@@ -58,7 +57,6 @@ olympics = olympics.merge(gdp[['Country Name', 'Country Code']].drop_duplicates(
                           left_on = 'Team',
                           right_on = 'Country Name',
                           how = 'left')
-
 olympics.drop('Country Name', axis = 1, inplace = True)
 
 
@@ -67,7 +65,6 @@ olympics = olympics.merge(gdp,
                           left_on = ['Country Code', 'Year'],
                           right_on = ['Country Code', 'Year'],
                           how = 'left')
-
 olympics.drop('Country Name', axis = 1, inplace = True)
 
 
@@ -81,14 +78,16 @@ olympics.drop('Country', axis = 1, inplace = True)
 
 
 
-olympics['Medal_Won'] = np.where(olympics.loc[:,'Medal'] == 'DNW', 0, 1)
+olympics['Medal_Won'] = np.where(olympics.loc[:,'Medal'] == 'No Medal', 0, 1)
+
+
 
 identify_team_events = pd.pivot_table(olympics,
                                       index = ['Team', 'Year', 'Event'],
                                       columns = 'Medal',
                                       values = 'Medal_Won',
                                       aggfunc = 'sum',
-                                     fill_value = 0).drop('No Medal', axis = 1).reset_index()
+                                      fill_value = 0).drop('No Medal', axis = 1).reset_index()
 
 identify_team_events = identify_team_events.loc[identify_team_events['Gold'] > 1, :]
 
@@ -114,3 +113,34 @@ olympics['Single_Event'] = np.where(single_event_mask & medal_mask, 1, 0)
 olympics['Event_Category'] = olympics['Single_Event'] + olympics['Team_Event']
 medal_tally_agnostic = olympics.groupby(['Year', 'Team', 'Event', 'Medal'])[['Medal_Won', 'Event_Category']].\
 agg('sum').reset_index()
+
+
+
+
+medal_tally_agnostic = olympics.groupby(['Year', 'Team', 'Event', 'Medal'])[['Medal_Won', 'Event_Category']].agg('sum').reset_index()
+
+medal_tally_agnostic['Medal_Won_Corrected'] = medal_tally_agnostic['Medal_Won']/medal_tally_agnostic['Event_Category']
+
+# Medal Tally.
+medal_tally = medal_tally_agnostic.groupby(['Year','Team'])['Medal_Won_Corrected'].agg('sum').reset_index()
+
+medal_tally_pivot = pd.pivot_table(medal_tally,
+                     index = 'Team',
+                     columns = 'Year',
+                     values = 'Medal_Won_Corrected',
+                     aggfunc = 'sum',
+                     margins = True).sort_values('All', ascending = False)[1:5]
+
+# print total medals won in the given period
+print(medal_tally_pivot.loc[:,'All'])
+# List of top countries
+top_countries = ['USA', 'Russia', 'Germany', 'China']
+
+year_team_medals = pd.pivot_table(medal_tally,
+                                  index = 'Year',
+                                  columns = 'Team',
+                                  values = 'Medal_Won_Corrected',
+                                  aggfunc = 'sum')[top_countries]
+
+# plotting the medal tallies
+year_team_medals.plot(linestyle = '-', marker = 'o', alpha = 1, figsize = (14,14), linewidth = 2)
