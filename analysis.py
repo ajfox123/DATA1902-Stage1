@@ -143,4 +143,4 @@ year_team_medals = pd.pivot_table(medal_tally,
                                   aggfunc = 'sum')[top_countries]
 
 # plotting the medal tallies
-year_team_medals.plot(linestyle = '-', marker = 'o', alpha = 1, figsize = (14,14), linewidth = 2)
+year_team_medals.plot(linestyle = '-', marker = 'o', alpha = 1, figsize = (10,8), linewidth = 2)
